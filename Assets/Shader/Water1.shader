@@ -48,6 +48,106 @@ Shader "Custom/Water1"
 			float4 _Color;
 			float4 _GerstnerQ;
 
+			float SimpleWaveDirection(float4 vertex, float angel, out float dx, out float dz)
+			{
+				float2 v1 = vertex.xz;
+				float2 v2;
+
+				v2.x = cos(angel);
+				v2.y = sin(angel);
+				
+				dx = v2.x;
+				dz = v2.y;
+
+				return v1.x * v2.x + v1.y * v2.y;
+			}
+
+			// float SimpleWaveDirectionDx(float4 vertex, float angel)
+			// {
+			// 	return 1;
+			// }
+
+			// float SimpleWaveDirectionDy(float4 vertex, float angel)
+			// {
+			// 	return 0;
+			// }
+
+			float SimpleWaveFunc(float4 vertex, float t, float4 wave_param, out float dx, out float dz)
+			{
+				float A = wave_param.x;
+				float W = 2 * 3.1415926 / wave_param.y;
+				float Fi = wave_param.z * W;
+
+				float ddx;
+				float ddz;
+				float angel = wave_param.w * 3.1415926 / 180;
+
+				float D = SimpleWaveDirection(vertex, angel, ddx, ddz);
+
+				dx = A * cos(W * D + Fi * t) * W * ddx;
+				dz = A * cos(W * D + Fi * t) * W * ddz;
+
+				return A * sin(W * D + Fi * t);
+			}
+
+			// float SimpleWaveDx(float4 vertex, float t, float4 wave_param)
+			// {
+			// 	float A = wave_param.x;
+			// 	float W = 2 * 3.1415926 / wave_param.y;
+			// 	float Fi = wave_param.z * W;
+
+			// 	return A * cos(W * SimpleWaveDirection(vertex, wave_param.w) + Fi * t) * W * SimpleWaveDirectionDx(vertex, wave_param.w);
+			// }
+
+			// float SimpleWaveDy(float4 vertex, float t, float4 wave_param)
+			// {
+			// 	float A = wave_param.x;
+			// 	float W = 2 * 3.1415926 / wave_param.y;
+			// 	float Fi = wave_param.z * W;
+
+			// 	return A * SimpleWaveDirectionDy(vertex, wave_param.w) * cos(W * SimpleWaveDirection(vertex, wave_param.w) + Fi * t) * W;
+			// }
+
+			float3 SimpleWave(float4 vertex, float t, out float3 normal)
+			{
+				float3 p;
+				p.x = vertex.x;
+				p.z = vertex.z;
+				
+				float dx = 0;
+				float dz = 0;
+
+				float tmp1;
+				float tmp2;
+
+				p.y = SimpleWaveFunc(vertex, t, _Wave1, tmp1, tmp2);
+				dx += tmp1;
+				dz += tmp2;
+				p.y += SimpleWaveFunc(vertex, t, _Wave2, tmp1, tmp2);
+				dx += tmp1;
+				dz += tmp2;
+				p.y += SimpleWaveFunc(vertex, t, _Wave3, tmp1, tmp2);
+				dx += tmp1;
+				dz += tmp2;
+				p.y += SimpleWaveFunc(vertex, t, _Wave4, tmp1, tmp2);
+				dx += tmp1;
+				dz += tmp2;
+
+
+				// float dx = SimpleWaveDx(vertex, t, _Wave1);
+				// dx += SimpleWaveDx(vertex, t, _Wave2);
+				// dx += SimpleWaveDx(vertex, t, _Wave3);
+				// dx += SimpleWaveDx(vertex, t, _Wave4);
+				
+				// float dz = SimpleWaveDy(vertex, t, _Wave1);
+				// dz += SimpleWaveDy(vertex, t, _Wave2);
+				// dz += SimpleWaveDy(vertex, t, _Wave3);
+				// dz += SimpleWaveDy(vertex, t, _Wave4);
+
+				normal = normalize(float3(-dx, 1, -dz));
+
+				return p;
+			}
 
 			float WaveDirection(float x, float y, float param)
 			{
@@ -142,15 +242,23 @@ Shader "Custom/Water1"
 			{
 				v2f o;
 
-				float3 wave_p = GetWave2(v.vertex.x, v.vertex.z);
+				// float3 wave_p = GetWave2(v.vertex.x, v.vertex.z);
 
-				o.normal = GetWaveNormal2(v.vertex.x, v.vertex.z);
+				// o.normal = GetWaveNormal2(v.vertex.x, v.vertex.z);
 
+				// o.normal = UnityObjectToWorldNormal(o.normal);
+
+				// o.world_pos = mul(unity_ObjectToWorld, wave_p).xyz;
+
+				// o.vertex = UnityObjectToClipPos(wave_p);
+				
+				float t = _Time.y;
+
+				float3 wave_p = SimpleWave(v.vertex, t, o.normal);
 				o.normal = UnityObjectToWorldNormal(o.normal);
-
 				o.world_pos = mul(unity_ObjectToWorld, wave_p).xyz;
-
 				o.vertex = UnityObjectToClipPos(wave_p);
+
 				return o;
 			}
 			
