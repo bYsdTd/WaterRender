@@ -6,7 +6,8 @@ Shader "Custom/Water2"
 {
 	Properties
 	{
-		_Color("Color", Color) = (1, 1, 1, 1)
+		_ShallowWaterColor("ShallowWaterColor", Color) = (1, 1, 1, 1)
+		_DeepWaterColor("DeepWaterColor", Color) = (1, 1, 1, 1)
 		_Wave1("Wave1", Vector) = (1, 1, 1, 1)
 		_Wave2("Wave2", Vector) = (1, 1, 1, 1)
 		_Wave3("Wave3", Vector) = (1, 1, 1, 1)
@@ -43,7 +44,8 @@ Shader "Custom/Water2"
 			float4 _Wave2;
 			float4 _Wave3;
 			float4 _Wave4;
-			float4 _Color;
+			float4 _ShallowWaterColor;
+			float4 _DeepWaterColor;
 			float4 _GerstnerQ;
 
 			float WaveDirection(float4 vertex, float angel, out float dx, out float dz)
@@ -125,12 +127,17 @@ Shader "Custom/Water2"
 			fixed4 frag (v2f i) : SV_Target
 			{
 				float3 light_dir = normalize(UnityWorldSpaceLightDir(i.world_pos));
-				float diffuse = max(0, dot(i.normal, light_dir));
+				float3 view_dir = normalize(UnityWorldSpaceViewDir(i.world_pos));
 
-				fixed4 final_color = _Color * diffuse * fixed4(1, 1, 1, 1);
+				float facing = saturate(dot(view_dir, i.normal));
+     			fixed4 water_color = lerp(_ShallowWaterColor,_DeepWaterColor, facing);
 
+				float r = 0.02037;
 
-				return final_color;
+				float tmp = 1 - dot(view_dir, i.normal);
+				float fastFresnel = r + ( 1-r ) * pow(tmp,5);
+
+				return water_color + fastFresnel * fixed4(1, 1, 1, 1);
 			}
 			ENDCG
 		}
